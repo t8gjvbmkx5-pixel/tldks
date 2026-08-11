@@ -9,10 +9,81 @@
 html,body{margin:0;min-height:100%;background:#fff}
 main{width:100%;padding:24px 12px;background:#fff}
 .pages{width:min(100%,1280px);margin:0 auto}
-img{display:block;width:100%;height:auto;margin:0 auto 24px;background:#fff}
-@media(max-width:600px){main{padding:8px 0}img{margin-bottom:8px}}
-@media print{main{padding:0}img{margin:0;break-after:page}}
+.page{position:relative;margin:0 auto 28px;background:#fff}
+.page>img{display:block;width:100%;height:auto;background:#fff}
+.tools{display:flex;justify-content:flex-end;gap:8px;padding:8px 0}
+button{border:1px solid #ccc;border-radius:7px;background:#fff;padding:8px 14px;font-size:14px;cursor:pointer}
+button:hover{background:#f2f2f2}
+.modal{position:fixed;inset:0;z-index:1000;display:none;flex-direction:column;background:#fff}
+.modal.open{display:flex}
+.editorbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;border-bottom:1px solid #ddd;background:#fff}
+.editorwrap{flex:1;display:grid;place-items:center;min-height:0;padding:12px;background:#eee;overflow:auto}
+canvas{display:block;max-width:100%;max-height:100%;background:#fff;touch-action:none;box-shadow:0 4px 24px #0003}
+input[type=color]{width:40px;height:34px;padding:2px}
+@media(max-width:600px){main{padding:8px 0}.page{margin-bottom:14px}.tools{padding:7px 8px}}
+@media print{main{padding:0}.page{margin:0;break-after:page}.tools,.modal{display:none!important}}
 </style>
 </head>
-<body><main><div class="pages"><img src="slides/slide-01.jpg" alt="슬라이드 1" loading="lazy"><img src="slides/slide-02.jpg" alt="슬라이드 2" loading="lazy"><img src="slides/slide-03.jpg" alt="슬라이드 3" loading="lazy"><img src="slides/slide-04.jpg" alt="슬라이드 4" loading="lazy"><img src="slides/slide-05.jpg" alt="슬라이드 5" loading="lazy"><img src="slides/slide-06.jpg" alt="슬라이드 6" loading="lazy"><img src="slides/slide-07.jpg" alt="슬라이드 7" loading="lazy"><img src="slides/slide-08.jpg" alt="슬라이드 8" loading="lazy"><img src="slides/slide-09.jpg" alt="슬라이드 9" loading="lazy"><img src="slides/slide-10.jpg" alt="슬라이드 10" loading="lazy"></div></main></body>
+<body><main><div class="pages"><figure class="page">
+      <img src="slides/slide-01.jpg" alt="슬라이드 1" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-02.jpg" alt="슬라이드 2" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-03.jpg" alt="슬라이드 3" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-04.jpg" alt="슬라이드 4" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-05.jpg" alt="슬라이드 5" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-06.jpg" alt="슬라이드 6" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-07.jpg" alt="슬라이드 7" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-08.jpg" alt="슬라이드 8" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-09.jpg" alt="슬라이드 9" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure><figure class="page">
+      <img src="slides/slide-10.jpg" alt="슬라이드 10" loading="lazy">
+      <div class="tools"><button onclick="editSlide(this)">수정</button><button onclick="saveSlide(this)">이미지 저장</button></div>
+    </figure></div></main>
+<div class="modal" id="editor">
+  <div class="editorbar">
+    <button onclick="setTool('pen')">펜</button><button onclick="addText()">글씨 추가</button>
+    <button onclick="imageInput.click()">사진 추가</button><input id="imageInput" type="file" accept="image/*" hidden>
+    <label>색상 <input id="color" type="color" value="#ff0000"></label>
+    <label>굵기 <input id="size" type="range" min="2" max="40" value="8"></label>
+    <button onclick="undo()">실행 취소</button><button onclick="applyEdit()">페이지에 적용</button>
+    <button onclick="downloadCanvas()">PNG 저장</button><button onclick="closeEditor()">닫기</button>
+  </div>
+  <div class="editorwrap"><canvas id="canvas"></canvas></div>
+</div>
+<script>
+const editor=document.querySelector('#editor'),canvas=document.querySelector('#canvas'),ctx=canvas.getContext('2d');
+const imageInput=document.querySelector('#imageInput');let currentImage=null,drawing=false,last=null,history=[];
+function snapshot(){if(history.length>20)history.shift();history.push(canvas.toDataURL('image/png'));}
+function loadToCanvas(src){const im=new Image();im.onload=()=>{canvas.width=im.naturalWidth;canvas.height=im.naturalHeight;ctx.drawImage(im,0,0);history=[];snapshot();};im.src=src;}
+function editSlide(btn){currentImage=btn.closest('.page').querySelector('img');editor.classList.add('open');loadToCanvas(currentImage.src);}
+function closeEditor(){editor.classList.remove('open');}
+function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+canvas.addEventListener('pointerdown',e=>{drawing=true;last=point(e);snapshot();canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=point(e);ctx.strokeStyle=color.value;ctx.lineWidth=+size.value;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;});
+canvas.addEventListener('pointerup',()=>drawing=false);
+function setTool(){}
+function addText(){const text=prompt('추가할 글씨를 입력하세요');if(!text)return;snapshot();const px=Math.max(28,Math.round(canvas.width*.035));ctx.font=`bold ${px}px sans-serif`;ctx.fillStyle=color.value;ctx.textBaseline='top';ctx.fillText(text,canvas.width*.05,canvas.height*.05);}
+imageInput.onchange=()=>{const file=imageInput.files[0];if(!file)return;const im=new Image();im.onload=()=>{snapshot();const maxW=canvas.width*.4,maxH=canvas.height*.4,ratio=Math.min(maxW/im.width,maxH/im.height,1);ctx.drawImage(im,(canvas.width-im.width*ratio)/2,(canvas.height-im.height*ratio)/2,im.width*ratio,im.height*ratio);URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(file);imageInput.value='';};
+function undo(){if(history.length<2)return;history.pop();const im=new Image();im.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(im,0,0)};im.src=history[history.length-1];}
+function applyEdit(){if(currentImage)currentImage.src=canvas.toDataURL('image/jpeg',.94);closeEditor();}
+function download(src,name){const a=document.createElement('a');a.href=src;a.download=name;a.click();}
+function downloadCanvas(){download(canvas.toDataURL('image/png'),'edited-slide.png');}
+function saveSlide(btn){const img=btn.closest('.page').querySelector('img');const n=[...document.querySelectorAll('.page')].indexOf(btn.closest('.page'))+1;download(img.src,`slide-${String(n).padStart(2,'0')}.jpg`);}
+</script></body>
 </html>
